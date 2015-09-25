@@ -484,4 +484,52 @@ describe('probes.fs', function () {
     ], done)
   })
 
+  it('should not interfere with streams', function (done) {
+    var n = 1000
+    var last
+
+    function event (fn) {
+      return function (msg) {
+        if (last) msg.Edge.should.equal(last)
+        last = msg['X-Trace'].substr(42)
+        fn(msg)
+      }
+    }
+
+    var steps = [
+      event(entry('open')),
+      event(exit('open'))
+    ]
+
+    for (var i = 0; i < n; i++) {
+      steps.push(event(entry('write')))
+      steps.push(event(exit('write')))
+    }
+
+    steps.push(event(entry('close')))
+    steps.push(event(exit('close')))
+
+    var stream = require('stream')
+    var src = new stream.Readable()
+    src._read = function () {}
+
+    helper.httpTest(emitter, function (done) {
+      var dest = fs.createWriteStream(__filename + '.copy')
+      dest.on('error', done)
+      dest.on('close', done)
+
+      process.nextTick(function () {
+        src.on('error', done)
+        for (var i = 0; i < n; i++) {
+          src.push(new Buffer('wat'))
+        }
+        src.push(null)
+        src.pipe(dest)
+      })
+    }, steps, function (err) {
+      fs.unlinkSync(__filename + '.copy')
+      done(err)
+    })
+  })
+
 })

@@ -68,21 +68,17 @@ exports.doChecks = function (emitter, checks, done) {
   var add = emitter.server.address()
   var first = true
 
+  if ( ! checks.length) {
+    process.nextTick(done)
+  }
+
   emitter.removeAllListeners('message')
 
   function onMessage (msg) {
     log('mock tracelyzer (port ' + add.port + ') received message', msg)
+    checks.length.should.be.above(0)
     var check = checks.shift()
-    var check = checks[0]
-    if (check) {
-      try {
-        check(msg)
-      } catch (e) {
-        if (emitter.skipOnMatchFail) {
-          checks.unshift(check)
-        }
-      }
-    }
+    if (check) check(msg)
 
     // Always verify that a valid X-Trace ID is present
     msg.should.have.property('X-Trace').and.match(/^1B[0-9A-F]{56}$/)
@@ -125,11 +121,14 @@ var check = {
 exports.httpTest = function (emitter, test, validations, done) {
   var server = http.createServer(function (req, res) {
     debug('test started')
-    test(function (err, data) {
+    function reply (err, data) {
       debug('test ended')
       if (err) return done(err)
       res.end('done')
-    })
+    }
+    reply.request = req
+    reply.response = res
+    test(reply)
   })
 
   validations.unshift(check['http-entry'])
