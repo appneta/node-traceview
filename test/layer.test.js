@@ -435,7 +435,7 @@ describe('layer', function () {
     var trackOuter = helper.edgeTracker()
     var trackInner1 = helper.edgeTracker(trackOuter)
     var trackInner2 = helper.edgeTracker(trackOuter)
-    var trackInner3 = helper.edgeTracker(trackInner1)
+    var trackInner3 = helper.edgeTracker(trackInner2)
     var trackInner4 = helper.edgeTracker(trackInner3)
 
     var checks = [
@@ -446,20 +446,20 @@ describe('layer', function () {
         helper.checkEntry('inner-2', trackInner2),
 
         // Next tick
-        helper.checkExit('inner-1', trackInner1),
-          helper.checkInfo(after, trackInner1),
-          helper.checkEntry('inner-3', trackInner3),
-          helper.checkInfo(after, trackInner1),
         helper.checkExit('inner-2', trackInner2),
-
-      // Faked sync exit
-      helper.checkExit('outer', trackInner2),
+          helper.checkInfo(after, trackInner2),
+          helper.checkEntry('inner-3', trackInner3),
+          helper.checkInfo(after, trackInner2),
 
           // Delayed until after fake sync exit
           helper.checkExit('inner-3', trackInner3),
             helper.checkError(error, trackInner3),
             helper.checkEntry('inner-4', trackInner4),
             helper.checkExit('inner-4', trackInner4),
+
+        // Faked sync exit
+        helper.checkExit('inner-1', trackInner1),
+          helper.checkExit('outer', trackInner1),
     ]
 
     helper.doChecks(emitter, checks, done)
@@ -468,6 +468,13 @@ describe('layer', function () {
       layer.enter()
       var sub1 = layer.descend('inner-1')
       sub1.run(function (wrap) {
+        setTimeout(wrap(function () {
+          layer.exit()
+        }), 10)
+      })
+
+      var sub2 = layer.descend('inner-2')
+      sub2.run(function (wrap) {
         setImmediate(wrap(function () {
           tv.reportInfo(after)
 
@@ -485,13 +492,6 @@ describe('layer', function () {
 
           tv.reportInfo(after)
         }))
-      })
-
-      var sub2 = layer.descend('inner-2')
-      sub2.run(function (wrap) {
-        setTimeout(wrap(function () {
-          layer.exit()
-        }), 1)
       })
     })
   })
