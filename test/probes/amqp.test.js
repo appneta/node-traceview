@@ -19,11 +19,22 @@ describe('probes.amqp', function () {
     entry: function (msg) {
       msg.should.have.property('Layer', 'amqp')
       msg.should.have.property('Label', 'entry')
-      msg.should.have.property('RemoteHost')
+      msg.should.have.property('Flavor', 'amqp')
+      msg.should.have.property('RemoteHost', db_host)
     },
     exit: function (msg) {
       msg.should.have.property('Layer', 'amqp')
       msg.should.have.property('Label', 'exit')
+    },
+    pushq: function (msg) {
+      msg.should.have.property('Spec', 'pushq')
+      msg.should.have.property('ExchangeAction', 'publish')
+      msg.should.have.property('ExchangeType').and.be.an.instanceOf(String)
+    },
+    job: function (msg) {
+      msg.should.have.property('Spec', 'job')
+      msg.should.have.property('Flavor', 'amqp')
+      msg.should.have.property('MsgID').and.be.an.instanceOf(String)
     }
   }
 
@@ -42,7 +53,7 @@ describe('probes.amqp', function () {
   //
   // Create a connection for the tests to use
   //
-  before(function (done) {
+  beforeEach(function (done) {
     var parts = db_host.split(':')
     var host = parts.shift()
     var port = parts.shift()
@@ -55,7 +66,7 @@ describe('probes.amqp', function () {
     })
     client.on('ready', done)
   })
-  after(function (done) {
+  afterEach(function (done) {
     // NOTE: 1.x has no disconnect() and socket.end() is not safe.
     if (client.disconnect) {
       client.on('close', function () {
@@ -75,7 +86,7 @@ describe('probes.amqp', function () {
       var ex = client.exchange('test', {
         confirm: true
       }, function () {
-        ex.publish('test', {
+        ex.publish('message', {
           foo: 'bar'
         }, {
           mandatory: true
@@ -86,7 +97,9 @@ describe('probes.amqp', function () {
     }, [
       function (msg) {
         checks.entry(msg)
-        msg.should.have.property('RemoteHost', db_host)
+        checks.pushq(msg)
+        msg.should.have.property('ExchangeName', 'test')
+        msg.should.have.property('RoutingKey', 'message')
       },
       function (msg) {
         checks.exit(msg)
@@ -97,7 +110,7 @@ describe('probes.amqp', function () {
   it('should support no-confirm exchanges', function (done) {
     helper.test(emitter, function (done) {
       var ex = client.exchange('test', {}, function () {
-        var task = ex.publish('test', {
+        var task = ex.publish('message', {
           foo: 'bar'
         })
         done()
@@ -105,8 +118,9 @@ describe('probes.amqp', function () {
     }, [
       function (msg) {
         checks.entry(msg)
-        msg.should.have.property('RemoteHost', db_host)
+        checks.pushq(msg)
         msg.should.have.property('ExchangeName', 'test')
+        msg.should.have.property('RoutingKey', 'message')
       },
       function (msg) {
         checks.exit(msg)
@@ -122,7 +136,7 @@ describe('probes.amqp', function () {
         q.on('queueBindOk', function() {
           q.on('basicConsumeOk', function () {
             var ex = client.exchange('test', {}, function () {
-              var task = ex.publish('test', {
+              var task = ex.publish('message', {
                 foo: 'bar'
               })
               done()
@@ -139,8 +153,86 @@ describe('probes.amqp', function () {
     }, [
       function (msg) {
         checks.entry(msg)
-        msg.should.have.property('RemoteHost', db_host)
+        checks.pushq(msg)
         msg.should.have.property('ExchangeName', 'test')
+        msg.should.have.property('RoutingKey', 'message')
+      },
+      function (msg) {
+        checks.exit(msg)
+      }
+    ], done)
+  })
+
+  it('should report jobs', function (done) {
+    helper.test(emitter, function (done) {
+      var ex = client.exchange('exchange', { type: 'fanout' })
+      client.queue('queue', function (q) {
+        q.bind(ex, '*')
+
+        q.subscribe({ ack: true }, function myJob (a, b, c, msg) {
+          setImmediate(function () {
+            msg.acknowledge()
+            done()
+          })
+        })
+
+        ex.publish('message', {
+          foo: 'bar'
+        })
+      })
+    }, [
+      function (msg) {
+        checks.entry(msg)
+        checks.pushq(msg)
+        msg.should.have.property('ExchangeName', 'exchange')
+        msg.should.have.property('RoutingKey', 'message')
+      },
+      function (msg) {
+        checks.exit(msg)
+      },
+      function (msg) {
+        checks.entry(msg)
+        checks.job(msg)
+        msg.should.have.property('Queue', 'queue')
+        msg.should.have.property('JobName', 'myJob')
+        msg.should.have.property('RoutingKey', 'message')
+      },
+      function (msg) {
+        checks.exit(msg)
+      }
+    ], done)
+  })
+
+  it('should properly report auto-acked jobs', function (done) {
+    helper.test(emitter, function (done) {
+      var ex = client.exchange('exchange', { type: 'fanout' })
+      client.queue('queue', function (q) {
+        q.bind(ex, '')
+
+        q.subscribe({ ack: false }, function myJob () {
+          done()
+        })
+
+        ex.publish('message', {
+          foo: 'bar'
+        })
+      })
+    }, [
+      function (msg) {
+        checks.entry(msg)
+        checks.pushq(msg)
+        msg.should.have.property('ExchangeName', 'exchange')
+        msg.should.have.property('RoutingKey', 'message')
+      },
+      function (msg) {
+        checks.exit(msg)
+      },
+      function (msg) {
+        checks.entry(msg)
+        checks.job(msg)
+        msg.should.have.property('Queue', 'queue')
+        msg.should.have.property('JobName', 'myJob')
+        msg.should.have.property('RoutingKey', 'message')
       },
       function (msg) {
         checks.exit(msg)
@@ -152,7 +244,7 @@ describe('probes.amqp', function () {
     var next = helper.after(2, function () {
       helper.test(emitter, function (done) {
         q.on('basicConsumeOk', function () {
-          var task = ex.publish('test', {
+          var task = ex.publish('message', {
             foo: 'bar'
           })
           done()
@@ -162,14 +254,15 @@ describe('probes.amqp', function () {
           routingKeyInPayload: true
         }, function () {})
       }, [
-      function (msg) {
-        checks.entry(msg)
-        msg.should.have.property('RemoteHost', db_host)
-        msg.should.have.property('ExchangeName', 'test')
-      },
-      function (msg) {
-        checks.exit(msg)
-      }
+        function (msg) {
+          checks.entry(msg)
+          checks.pushq(msg)
+          msg.should.have.property('ExchangeName', 'test')
+          msg.should.have.property('RoutingKey', 'message')
+        },
+        function (msg) {
+          checks.exit(msg)
+        }
       ], done)
     })
 
