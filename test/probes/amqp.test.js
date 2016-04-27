@@ -240,6 +240,34 @@ describe('probes.amqp', function () {
     ], done)
   })
 
+  it('should create entry layers for jobs', function (done) {
+    var ex = client.exchange('exchange', { type: 'fanout' })
+    client.queue('queue', function (q) {
+      q.bind(ex, '')
+
+      q.subscribe({ ack: false }, function myJob () {})
+
+      ex.publish('message', {
+        foo: 'bar'
+      })
+    })
+
+    helper.doChecks(emitter, [
+      function (msg) {
+        checks.entry(msg)
+        checks.job(msg)
+        msg.should.have.property('Queue', 'queue')
+        msg.should.have.property('JobName', 'myJob')
+        msg.should.have.property('RoutingKey', 'message')
+        msg.should.have.property('SampleRate')
+        msg.should.have.property('SampleSource')
+      },
+      function (msg) {
+        checks.exit(msg)
+      }
+    ], done)
+  })
+
   it('should bind event listeners even for instances constructed outside the request', function (done) {
     var next = helper.after(2, function () {
       helper.test(emitter, function (done) {
