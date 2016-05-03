@@ -49,12 +49,61 @@ describe('probes.amqplib', function () {
     emitter.close(done)
   })
 
+  function makeTests (context) {
+    var queue = 'tasks-' + Math.random()
+
+    it('should report send and consume in existing trace', function (done) {
+      helper.test(emitter, function (done) {
+        context.channel.assertQueue(queue)
+        context.channel.sendToQueue(queue, new Buffer('promises'))
+        context.channel.consume(queue, function (msg) {
+          context.channel.ack(msg)
+          setImmediate(done)
+        })
+      }, [
+        function (msg) {
+          checks.entry(msg)
+          checks.pushq(msg)
+        },
+        function (msg) {
+          checks.exit(msg)
+        },
+        function (msg) {
+          checks.entry(msg)
+          checks.job(msg)
+          msg.should.have.property('RoutingKey', queue)
+        },
+        function (msg) {
+          checks.exit(msg)
+        }
+      ], done)
+    })
+
+    it('should start new trace for consume', function (done) {
+      context.channel.assertQueue(queue)
+      context.channel.sendToQueue(queue, new Buffer('promises'))
+      context.channel.consume(queue, function (msg) {
+        context.channel.ack(msg)
+        done()
+      })
+
+      helper.doChecks(emitter, [
+        function (msg) {
+          checks.entry(msg)
+          checks.job(msg)
+          msg.should.have.property('RoutingKey', queue)
+        },
+        function (msg) {
+          checks.exit(msg)
+        }
+      ], done)
+    })
+  }
+
   describe('promises', function () {
     var amqp = require('amqplib')
+    var context = {}
     var client
-    var channel
-
-    var queue = 'tasks-' + Math.random()
 
     before(function () {
       return amqp.connect('amqp://' + db_host)
@@ -63,13 +112,13 @@ describe('probes.amqplib', function () {
           return client.createChannel()
         })
         .then(function (ch) {
-          channel = ch
+          context.channel = ch
         })
     })
 
     after(function (done) {
-      channel.close()
-      channel.on('close', done)
+      context.channel.close()
+      context.channel.on('close', done)
     })
 
     after(function (done) {
@@ -77,60 +126,13 @@ describe('probes.amqplib', function () {
       client.on('close', done)
     })
 
-    it('should report send and consume in existing trace', function (done) {
-      helper.test(emitter, function (done) {
-        channel.assertQueue(queue)
-        channel.sendToQueue(queue, new Buffer('promises'))
-        channel.consume(queue, function (msg) {
-          channel.ack(msg)
-          setImmediate(done)
-        })
-      }, [
-        function (msg) {
-          checks.entry(msg)
-          checks.pushq(msg)
-        },
-        function (msg) {
-          checks.exit(msg)
-        },
-        function (msg) {
-          checks.entry(msg)
-          checks.job(msg)
-          msg.should.have.property('RoutingKey', queue)
-        },
-        function (msg) {
-          checks.exit(msg)
-        }
-      ], done)
-    })
-
-    it('should start new trace for consume', function (done) {
-      channel.assertQueue(queue)
-      channel.sendToQueue(queue, new Buffer('promises'))
-      channel.consume(queue, function (msg) {
-        channel.ack(msg)
-        done()
-      })
-
-      helper.doChecks(emitter, [
-        function (msg) {
-          checks.entry(msg)
-          checks.job(msg)
-          msg.should.have.property('RoutingKey', queue)
-        },
-        function (msg) {
-          checks.exit(msg)
-        }
-      ], done)
-    })
+    makeTests(context)
   })
 
   describe('callbacks', function () {
     var amqp = require('amqplib/callback_api')
+    var context = {}
     var client
-    var channel
-
-    var queue = 'tasks-' + Math.random()
 
     before(function (done) {
       amqp.connect('amqp://' + db_host, function (err, conn) {
@@ -138,58 +140,23 @@ describe('probes.amqplib', function () {
         client = conn
         client.createChannel(function (err, ch) {
           if (err) return done(err)
-          channel = ch
+          context.channel = ch
           done()
         })
       })
     })
 
-    it('should report send and consume in existing trace', function (done) {
-      helper.test(emitter, function (done) {
-        channel.assertQueue(queue)
-        channel.sendToQueue(queue, new Buffer('promises'))
-        channel.consume(queue, function (msg) {
-          channel.ack(msg)
-          setImmediate(done)
-        })
-      }, [
-        function (msg) {
-          checks.entry(msg)
-          checks.pushq(msg)
-        },
-        function (msg) {
-          checks.exit(msg)
-        },
-        function (msg) {
-          checks.entry(msg)
-          checks.job(msg)
-          msg.should.have.property('RoutingKey', queue)
-        },
-        function (msg) {
-          checks.exit(msg)
-        }
-      ], done)
+    after(function (done) {
+      context.channel.close()
+      context.channel.on('close', done)
     })
 
-    it('should start new trace for consume', function (done) {
-      channel.assertQueue(queue)
-      channel.sendToQueue(queue, new Buffer('promises'))
-      channel.consume(queue, function (msg) {
-        channel.ack(msg)
-        done()
-      })
-
-      helper.doChecks(emitter, [
-        function (msg) {
-          checks.entry(msg)
-          checks.job(msg)
-          msg.should.have.property('RoutingKey', queue)
-        },
-        function (msg) {
-          checks.exit(msg)
-        }
-      ], done)
+    after(function (done) {
+      client.close()
+      client.on('close', done)
     })
+
+    makeTests(context)
   })
 
 })
