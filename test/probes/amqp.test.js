@@ -35,6 +35,9 @@ describe('probes.amqp', function () {
       msg.should.have.property('Spec', 'job')
       msg.should.have.property('Flavor', 'amqp')
       msg.should.have.property('MsgID').and.be.an.instanceOf(String)
+      msg.should.have.property('Controller').and.be.an.instanceOf(String)
+      msg.should.have.property('Action').and.be.an.instanceOf(String)
+      msg.should.have.property('URL').and.be.an.instanceOf(String)
     }
   }
 
@@ -196,6 +199,7 @@ describe('probes.amqp', function () {
         msg.should.have.property('Queue', 'queue')
         msg.should.have.property('JobName', 'myJob')
         msg.should.have.property('RoutingKey', 'message')
+        msg.should.have.property('SourceTrace').and.be.an.instanceOf(String)
       },
       function (msg) {
         checks.exit(msg)
@@ -233,6 +237,7 @@ describe('probes.amqp', function () {
         msg.should.have.property('Queue', 'queue')
         msg.should.have.property('JobName', 'myJob')
         msg.should.have.property('RoutingKey', 'message')
+        msg.should.have.property('SourceTrace').and.be.an.instanceOf(String)
       },
       function (msg) {
         checks.exit(msg)
