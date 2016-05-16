@@ -34,6 +34,9 @@ describe('probes.amqplib', function () {
       msg.should.have.property('Spec', 'job')
       msg.should.have.property('MsgID').and.be.an.instanceOf(String)
       msg.should.have.property('JobName').and.be.an.instanceOf(String)
+      msg.should.have.property('Controller').and.be.an.instanceOf(String)
+      msg.should.have.property('Action').and.be.an.instanceOf(String)
+      msg.should.have.property('URL').and.be.an.instanceOf(String)
     }
   }
 
@@ -72,6 +75,7 @@ describe('probes.amqplib', function () {
           checks.entry(msg)
           checks.job(msg)
           msg.should.have.property('RoutingKey', queue)
+          msg.should.have.property('SourceTrace').and.be.an.instanceOf(String)
         },
         function (msg) {
           checks.exit(msg)
