@@ -563,6 +563,40 @@ describe('custom', function () {
     should.not.exist(tv.traceId)
   })
 
+  // Verify start with meta works
+  it('should start with meta', function (done) {
+    var previous = new Layer('previous')
+    var entry = previous.events.entry
+    var last
+
+    helper.doChecks(emitter, [
+      function (msg) {
+        msg.should.have.property('Layer', 'test')
+        msg.should.have.property('Label', 'entry')
+        msg.should.have.property('X-TV-Meta', entry.toString())
+        msg.should.have.property('SampleSource')
+        msg.should.have.property('SampleRate')
+        last = msg['X-Trace'].substr(42)
+      },
+      function (msg) {
+        msg.should.have.property('Layer', 'test')
+        msg.should.have.property('Label', 'exit')
+        msg.Edge.should.equal(last)
+      }
+    ], done)
+
+    // Clear context
+    Layer.last = Event.last = null
+
+    tv.startOrContinueTrace(
+      { meta: entry.toString() },
+      'test',
+      function (cb) { cb() },
+      conf,
+      function () {}
+    )
+  })
+
   it('should bind functions to requestStore', function () {
     var bind = tv.requestStore.bind
     var threw = false
