@@ -167,6 +167,7 @@ describe('probes.amqp', function () {
   })
 
   it('should report jobs', function (done) {
+    var id
     helper.test(emitter, function (done) {
       var ex = client.exchange('exchange', { type: 'fanout' })
       client.queue('queue', function (q) {
@@ -189,6 +190,7 @@ describe('probes.amqp', function () {
         checks.pushq(msg)
         msg.should.have.property('ExchangeName', 'exchange')
         msg.should.have.property('RoutingKey', 'message')
+        id = msg['X-Trace']
       },
       function (msg) {
         checks.exit(msg)
@@ -199,7 +201,10 @@ describe('probes.amqp', function () {
         msg.should.have.property('Queue', 'queue')
         msg.should.have.property('JobName', 'myJob')
         msg.should.have.property('RoutingKey', 'message')
-        msg.should.have.property('SourceTrace').and.be.an.instanceOf(String)
+        msg.should.have.property('SourceTrace', id)
+        msg.should.have.property('Controller', 'amqp')
+        msg.should.have.property('Action', 'myJob')
+        msg.should.have.property('URL', '/amqp/queue')
       },
       function (msg) {
         checks.exit(msg)
@@ -208,6 +213,7 @@ describe('probes.amqp', function () {
   })
 
   it('should properly report auto-acked jobs', function (done) {
+    var id
     helper.test(emitter, function (done) {
       var ex = client.exchange('exchange', { type: 'fanout' })
       client.queue('queue', function (q) {
@@ -227,6 +233,7 @@ describe('probes.amqp', function () {
         checks.pushq(msg)
         msg.should.have.property('ExchangeName', 'exchange')
         msg.should.have.property('RoutingKey', 'message')
+        id = msg['X-Trace']
       },
       function (msg) {
         checks.exit(msg)
@@ -237,7 +244,10 @@ describe('probes.amqp', function () {
         msg.should.have.property('Queue', 'queue')
         msg.should.have.property('JobName', 'myJob')
         msg.should.have.property('RoutingKey', 'message')
-        msg.should.have.property('SourceTrace').and.be.an.instanceOf(String)
+        msg.should.have.property('SourceTrace', id)
+        msg.should.have.property('Controller', 'amqp')
+        msg.should.have.property('Action', 'myJob')
+        msg.should.have.property('URL', '/amqp/queue')
       },
       function (msg) {
         checks.exit(msg)
