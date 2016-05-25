@@ -283,6 +283,55 @@ describe('probes.amqp', function () {
     ], done)
   })
 
+  it('should include SourceTrace in externally created jobs', function (done) {
+    var innerDone
+    var id
+
+    var ex = client.exchange('exchange', { type: 'fanout' })
+    client.queue('queue', function (q) {
+      q.bind(ex, '*')
+
+      q.subscribe({ ack: true }, function myJob (a, b, c, msg) {
+        setImmediate(function () {
+          msg.acknowledge()
+          innerDone()
+        })
+      })
+
+      helper.test(emitter, function (done) {
+        innerDone = done
+        ex.publish('message', {
+          foo: 'bar'
+        })
+      }, [
+        function (msg) {
+          checks.entry(msg)
+          checks.pushq(msg)
+          msg.should.have.property('ExchangeName', 'exchange')
+          msg.should.have.property('RoutingKey', 'message')
+          id = msg['X-Trace']
+        },
+        function (msg) {
+          checks.exit(msg)
+        },
+        function (msg) {
+          checks.entry(msg)
+          checks.job(msg)
+          msg.should.have.property('Queue', 'queue')
+          msg.should.have.property('JobName', 'myJob')
+          msg.should.have.property('RoutingKey', 'message')
+          msg.should.have.property('SourceTrace', id)
+          msg.should.have.property('Controller', 'amqp')
+          msg.should.have.property('Action', 'myJob')
+          msg.should.have.property('URL', '/amqp/queue')
+        },
+        function (msg) {
+          checks.exit(msg)
+        }
+      ], done)
+    })
+  })
+
   it('should bind event listeners even for instances constructed outside the request', function (done) {
     var next = helper.after(2, function () {
       helper.test(emitter, function (done) {
