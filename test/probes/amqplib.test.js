@@ -53,11 +53,16 @@ describe('probes.amqplib', function () {
   })
 
   function makeTests (context) {
-    var queue = 'tasks-' + Math.random()
+    var queue
+
+    // Ensure queue exists
+    beforeEach(function () {
+      queue = 'tasks-' + Math.random()
+      context.channel.assertQueue(queue)
+    })
 
     it('should report send and consume in existing trace', function (done) {
       helper.test(emitter, function (done) {
-        context.channel.assertQueue(queue)
         context.channel.sendToQueue(queue, new Buffer('promises'))
         context.channel.consume(queue, function (msg) {
           context.channel.ack(msg)
@@ -84,11 +89,9 @@ describe('probes.amqplib', function () {
     })
 
     it('should start new trace for consume', function (done) {
-      context.channel.assertQueue(queue)
       context.channel.sendToQueue(queue, new Buffer('promises'))
       context.channel.consume(queue, function (msg) {
         context.channel.ack(msg)
-        done()
       })
 
       helper.doChecks(emitter, [
@@ -102,6 +105,38 @@ describe('probes.amqplib', function () {
         }
       ], done)
     })
+
+    it('should include SourceTrace in consume external to traced publish', function (done) {
+      var innerDone
+
+      context.channel.consume(queue, function (msg) {
+        context.channel.ack(msg)
+        setImmediate(innerDone)
+      })
+
+      helper.test(emitter, function (done) {
+        innerDone = done
+        context.channel.sendToQueue(queue, new Buffer('promises'))
+      }, [
+        function (msg) {
+          checks.entry(msg)
+          checks.pushq(msg)
+        },
+        function (msg) {
+          checks.exit(msg)
+        },
+        function (msg) {
+          checks.entry(msg)
+          checks.job(msg)
+          msg.should.have.property('RoutingKey', queue)
+          msg.should.have.property('SourceTrace').and.be.an.instanceOf(String)
+        },
+        function (msg) {
+          checks.exit(msg)
+        }
+      ], done)
+    })
+
   }
 
   describe('promises', function () {
