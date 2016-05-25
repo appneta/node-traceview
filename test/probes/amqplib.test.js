@@ -17,22 +17,24 @@ describe('probes.amqplib', function () {
   //
   var checks = {
     entry: function (msg) {
-      msg.should.have.property('Layer', 'amqp')
+      msg.should.have.property('Layer', 'amqplib')
       msg.should.have.property('Label', 'entry')
       msg.should.have.property('Flavor', 'amqp')
       msg.should.have.property('RemoteHost', db_host)
     },
     exit: function (msg) {
-      msg.should.have.property('Layer', 'amqp')
+      msg.should.have.property('Layer', 'amqplib')
       msg.should.have.property('Label', 'exit')
     },
     pushq: function (msg) {
       msg.should.have.property('Spec', 'pushq')
       msg.should.have.property('ExchangeAction', 'publish')
+      msg.should.have.property('RoutingKey').and.be.an.instanceOf(String)
     },
     job: function (msg) {
       msg.should.have.property('Spec', 'job')
       msg.should.have.property('MsgID').and.be.an.instanceOf(String)
+      msg.should.have.property('Queue').and.be.an.instanceOf(String)
       msg.should.have.property('JobName').and.be.an.instanceOf(String)
       msg.should.have.property('Controller').and.be.an.instanceOf(String)
       msg.should.have.property('Action').and.be.an.instanceOf(String)
@@ -72,6 +74,7 @@ describe('probes.amqplib', function () {
         function (msg) {
           checks.entry(msg)
           checks.pushq(msg)
+          msg.should.have.property('RoutingKey', queue)
         },
         function (msg) {
           checks.exit(msg)
@@ -79,6 +82,7 @@ describe('probes.amqplib', function () {
         function (msg) {
           checks.entry(msg)
           checks.job(msg)
+          msg.should.have.property('Queue', queue)
           msg.should.have.property('RoutingKey', queue)
           msg.should.have.property('SourceTrace').and.be.an.instanceOf(String)
         },
@@ -98,6 +102,7 @@ describe('probes.amqplib', function () {
         function (msg) {
           checks.entry(msg)
           checks.job(msg)
+          msg.should.have.property('Queue', queue)
           msg.should.have.property('RoutingKey', queue)
         },
         function (msg) {
@@ -121,6 +126,7 @@ describe('probes.amqplib', function () {
         function (msg) {
           checks.entry(msg)
           checks.pushq(msg)
+          msg.should.have.property('RoutingKey', queue)
         },
         function (msg) {
           checks.exit(msg)
@@ -128,6 +134,7 @@ describe('probes.amqplib', function () {
         function (msg) {
           checks.entry(msg)
           checks.job(msg)
+          msg.should.have.property('Queue', queue)
           msg.should.have.property('RoutingKey', queue)
           msg.should.have.property('SourceTrace').and.be.an.instanceOf(String)
         },
