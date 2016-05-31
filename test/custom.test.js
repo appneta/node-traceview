@@ -401,8 +401,56 @@ describe('custom', function () {
       function (msg) {
         msg.should.have.property('Layer', 'test')
         msg.should.have.property('Label', 'entry')
-        msg.should.have.property('SampleSource')
-        msg.should.have.property('SampleRate')
+
+        // Validate AApp is *not* present
+        msg.should.not.have.property('AApp')
+
+        // Validate presence of App token
+        msg.should.have.property('App')
+        msg.App.should.be.an.instanceOf(String)
+        msg.App.should.have.lengthOf(32)
+
+        // Validate presence of _SP data
+        msg.should.have.property('_SP')
+        msg._SP.should.have.property('buffer')
+        msg._SP.buffer.length.should.be.above(0)
+
+        msg.should.not.have.property('Edge')
+        last = msg['X-Trace'].substr(42)
+      },
+      function (msg) {
+        msg.should.have.property('Layer', 'test')
+        msg.should.have.property('Label', 'exit')
+        msg.Edge.should.equal(last)
+      }
+    ], done)
+
+    var test = 'foo'
+    var res = tv.startOrContinueTrace(null, function (last) {
+      return last.descend('test')
+    }, function () {
+      return test
+    }, conf)
+
+    res.should.equal(test)
+  })
+
+  // Verify startOrContinueTrace creates a new trace when not already tracing.
+  it('should send AApp in entry events', function (done) {
+    var last
+
+    tv.appToken = '1234567890abcdef1234567890abcdef'
+
+    helper.doChecks(emitter, [
+      function (msg) {
+        msg.should.have.property('Layer', 'test')
+        msg.should.have.property('Label', 'entry')
+
+        // Validate presence of App token
+        msg.should.have.property('AApp')
+        msg.App.should.be.an.instanceOf(String)
+        msg.App.should.have.lengthOf(32)
+
         msg.should.not.have.property('Edge')
         last = msg['X-Trace'].substr(42)
       },
@@ -436,8 +484,7 @@ describe('custom', function () {
       function (msg) {
         msg.should.have.property('Layer', 'test')
         msg.should.have.property('Label', 'entry')
-        msg.should.not.have.property('SampleSource')
-        msg.should.not.have.property('SampleRate')
+        msg.should.not.have.property('_SP')
         msg.Edge.should.equal(entry.opId)
         last = msg['X-Trace'].substr(42)
       },
@@ -485,8 +532,7 @@ describe('custom', function () {
         msg.should.have.property('Layer', 'outer')
         msg.should.have.property('Label', 'entry')
         // SampleSource and SampleRate should NOT be here due to continuation
-        msg.should.not.have.property('SampleSource')
-        msg.should.not.have.property('SampleRate')
+        msg.should.not.have.property('_SP')
         msg.should.have.property('Edge', prev)
         outer = msg['X-Trace'].substr(42)
       },
@@ -494,8 +540,7 @@ describe('custom', function () {
         msg.should.have.property('Layer', 'inner')
         msg.should.have.property('Label', 'entry')
         // SampleSource and SampleRate should NOT be here due to continuation
-        msg.should.not.have.property('SampleSource')
-        msg.should.not.have.property('SampleRate')
+        msg.should.not.have.property('_SP')
         msg.should.have.property('Edge', outer)
         sub = msg['X-Trace'].substr(42)
       },
@@ -582,8 +627,9 @@ describe('custom', function () {
       function (msg) {
         msg.should.have.property('Layer', 'test')
         msg.should.have.property('Label', 'entry')
-        msg.should.have.property('SampleSource')
-        msg.should.have.property('SampleRate')
+        msg.should.have.property('_SP')
+        msg._SP.should.have.property('buffer')
+        msg._SP.buffer.length.should.be.above(0)
         last = msg['X-Trace'].substr(42)
       },
       function (msg) {

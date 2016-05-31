@@ -152,8 +152,9 @@ describe('probes.https', function () {
         function (msg) {
           check.server.entry(msg)
           msg.should.have.property('X-TV-Meta', 'foo')
-          msg.should.have.property('SampleSource')
-          msg.should.have.property('SampleRate')
+          msg.should.have.property('_SP')
+          msg._SP.should.have.property('buffer')
+          msg._SP.buffer.length.should.be.above(0)
         },
         function (msg) {
           check.server.exit(msg)
