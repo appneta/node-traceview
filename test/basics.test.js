@@ -30,14 +30,6 @@ describe('basics', function () {
     tv.sampleRate.should.equal(100)
   })
 
-  it('should set sample source', function () {
-    tv.sampleSource = 100
-  })
-
-  it('should get sample source', function () {
-    tv.sampleSource.should.equal(100)
-  })
-
   it('should have sugary trace mode detectors', function () {
     // Reset first
     tv.traceMode = tv.addon.TRACE_THROUGH

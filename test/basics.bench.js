@@ -15,10 +15,6 @@ suite('basics', function () {
     tv.sampleRate = 100
   })
 
-  bench('set sample source', function () {
-    tv.sampleSource = 100
-  })
-
   bench('check if in "always" trace mode', function () {
     tv.always
   })
