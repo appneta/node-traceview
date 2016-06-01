@@ -612,12 +612,14 @@ describe('custom', function () {
   it('should start with meta', function (done) {
     var previous = new Layer('previous')
     var entry = previous.events.entry
+    var someUrl = 'some url'
     var last
 
     var called = false
     var sample = tv.sample
-    tv.sample = function (a, b, meta) {
+    tv.sample = function (a, b, meta, url) {
       tv.sample = sample
+      url.should.equal(someUrl)
       meta.should.equal(entry.toString())
       called = true
       return sample.call(this, a, b, meta)
@@ -646,7 +648,7 @@ describe('custom', function () {
     Layer.last = Event.last = null
 
     tv.startOrContinueTrace(
-      { meta: entry.toString() },
+      { meta: entry.toString(), url: someUrl },
       'test',
       function (cb) { cb() },
       conf,

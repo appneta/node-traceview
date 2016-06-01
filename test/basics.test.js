@@ -92,6 +92,28 @@ describe('basics', function () {
     tv.skipSample = skipSample
   })
 
+  it('should passthrough sampling arguments to sampleRequest', function () {
+    var called = false
+    var layer = 'test'
+    var xtrace = 'a'
+    var meta = 'b'
+    var url = 'c'
+
+    var realSample = tv.addon.Context.sampleRequest
+    tv.addon.Context.sampleRequest = function (a, b, c, d) {
+      tv.addon.Context.sampleRequest = realSample
+      called = true
+      a.should.equal(layer)
+      b.should.equal(xtrace)
+      c.should.equal(meta)
+      d.should.equal(url)
+      return ''
+    }
+
+    var s = tv.sample(layer, xtrace, meta, url)
+    called.should.equal(true)
+  })
+
   it('should not call sampleRate setter from sample function', function () {
     tv.sampleRate = tv.addon.MAX_SAMPLE_RATE
     tv.traceMode = 'always'
@@ -137,5 +159,57 @@ describe('basics', function () {
         res.resume()
       })
     })
+  })
+
+  it('should include expected data in __Init event', function () {
+    var data = tv.initData()
+    data.should.have.property('__Init', 1)
+    data.should.have.property('App')
+    data.App.should.have.lengthOf(32)
+    data.should.not.have.property('AApp')
+
+    // Verify component versions
+    data.should.have.property(
+      'Node.Version',
+      process.versions.node
+    )
+    data.should.have.property(
+      'Node.V8.Version',
+      process.versions.v8
+    )
+    data.should.have.property(
+      'Node.LibUV.Version',
+      process.versions.uv
+    )
+    data.should.have.property(
+      'Node.OpenSSL.Version',
+      process.versions.openssl
+    )
+    data.should.have.property(
+      'Node.Ares.Version',
+      process.versions.ares
+    )
+    data.should.have.property(
+      'Node.ZLib.Version',
+      process.versions.zlib
+    )
+    data.should.have.property(
+      'Node.HTTPParser.Version',
+      process.versions.http_parser
+    )
+    data.should.have.property(
+      'Node.Oboe.Version',
+      require('../package.json').version
+    )
+
+    // Validate module versions have been added
+    data.should.have.property(
+      'Node.Module.traceview-bindings.Version',
+      require('traceview-bindings/package.json').version
+    )
+
+    // TODO: Figure out a way to allow setting appToken here
+    // and unsetting after so I can test AApp presence here
+    // without interfering with other tests.
   })
 })
