@@ -11,18 +11,29 @@ describe('basics', function () {
   })
 
   it('should get trace mode', function () {
-    tv.traceMode.should.equal(tv.addon.TRACE_ALWAYS)
+    tv.traceMode.should.equal('always')
+  })
+
+  it('should set trace mode as flag', function () {
+    tv.traceMode = tv.addon.TRACE_NEVER
+    tv.traceMode.should.equal('never')
+
+    tv.traceMode = tv.addon.TRACE_ALWAYS
+    tv.traceMode.should.equal('always')
+
+    tv.traceMode = tv.addon.TRACE_THROUGH
+    tv.traceMode.should.equal('through')
   })
 
   it('should set trace mode as string', function () {
     tv.traceMode = 'never'
-    tv.traceMode.should.equal(tv.addon.TRACE_NEVER)
+    tv.traceMode.should.equal('never')
 
     tv.traceMode = 'always'
-    tv.traceMode.should.equal(tv.addon.TRACE_ALWAYS)
+    tv.traceMode.should.equal('always')
 
     tv.traceMode = 'through'
-    tv.traceMode.should.equal(tv.addon.TRACE_THROUGH)
+    tv.traceMode.should.equal('through')
   })
 
   it('should set and get sample rate', function () {
@@ -94,21 +105,29 @@ describe('basics', function () {
 
   it('should passthrough sampling arguments to sampleRequest', function () {
     var called = false
-    var layer = 'test'
+    var layer = 'test-' + Math.random()
     var xtrace = 'a'
     var meta = 'b'
     var url = 'c'
 
-    var realSample = tv.addon.Context.sampleRequest
-    tv.addon.Context.sampleRequest = function (a, b, c, d) {
-      tv.addon.Context.sampleRequest = realSample
-      called = true
+    var realConstruct = tv.addon.Context
+    tv.addon.Context = function (a, b, c, d) {
       a.should.equal(layer)
-      b.should.equal(xtrace)
-      c.should.equal(meta)
-      d.should.equal(url)
-      return ''
+      var i = new realConstruct(a, b, c, d)
+      var realSample = i.shouldSample
+      i.shouldSample = function (e, f, g) {
+        tv.addon.Context = realConstruct
+        called = true
+        e.should.equal(xtrace)
+        f.should.equal(meta)
+        g.should.equal(url)
+        return ''
+      }
+      return i
     }
+    Object.keys(realConstruct).forEach(key => {
+      tv.addon.Context[key] = realConstruct[key]
+    })
 
     var s = tv.sample(layer, xtrace, meta, url)
     called.should.equal(true)
