@@ -50,7 +50,8 @@ Vagrant.configure(2) do |config|
   config.vm.box = 'ubuntu/trusty64'
 
   config.vm.network 'private_network', type: 'dhcp'
-  config.vm.synced_folder '.', '/vagrant', id: 'core', nfs: true
+  config.vm.synced_folder '.', '/vagrant', id: 'core', nfs: true,
+    nfs_udp: false, mount_options: ['nolock,vers=3,noatime,actimeo=1']
 
   config.vm.provision 'docker' do |d|
     images = JSON.parse(File.read('docker-containers.json'), symbolize_names: true)

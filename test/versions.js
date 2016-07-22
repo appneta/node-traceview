@@ -51,6 +51,7 @@ test('mongodb-core', '>= 1.1.0')
 test('mongoose',     '>= 2.2.1 < 4.2 || >= 4.2.2')
 
 test('mysql',               '> 0.9.0')
+test('mysql2')
 test('node-cassandra-cql',  '>= 0.2.0')
 test('oracledb')
 
