@@ -274,8 +274,9 @@ describe('probes.amqp', function () {
         msg.should.have.property('Queue', 'queue')
         msg.should.have.property('JobName', 'myJob')
         msg.should.have.property('RoutingKey', 'message')
-        msg.should.have.property('SampleRate')
-        msg.should.have.property('SampleSource')
+        msg.should.have.property('_SP')
+        msg._SP.should.have.property('buffer')
+        msg._SP.buffer.length.should.be.above(0)
       },
       function (msg) {
         checks.exit(msg)
