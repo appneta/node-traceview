@@ -90,6 +90,7 @@
     "mongodb-core": "^1.2.19",
     "mongoose": "^4.4.5",
     "mysql": "^2.9.0",
+    "mysql2": "^1.0.0-rc.7",
     "node-cassandra-cql": "~0.4.4",
     "node-celery": "^0.2.3",
     "pg": "^4.4.1",
